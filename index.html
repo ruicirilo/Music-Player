@@ -1,0 +1,282 @@
+<html lang="en">
+<head>
+  <script src="/gdpr/gdprscript.js?buildTime=1725656763"></script>
+  <meta charset="UTF-8">
+  <title>Music Player</title>
+  <style>
+    /* Estilos para o corpo da página */
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f7f7f7;
+      margin: 0;
+      padding: 0;
+      scroll-behavior: smooth;
+    }
+
+    /* Estilos para o contêiner de pesquisa */
+    #searchContainer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 50px auto;
+      max-width: 600px;
+      padding: 10px;
+      background-color: #fff;
+      box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Estilos para o campo de pesquisa */
+    #searchTerm {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 5px 0 0 5px;
+      font-size: 18px;
+    }
+
+    /* Estilos para o botão de pesquisa */
+    #searchButton {
+      padding: 10px;
+      border: none;
+      border-radius: 0 5px 5px 0;
+      font-size: 18px;
+      background-color: #007bff;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    /* Estilos para o contêiner de lista de álbuns */
+    #albumList {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 0 auto;
+      max-width: 800px;
+    }
+
+    /* Estilos para as linhas de álbuns */
+    .album-row {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    /* Estilos para cada álbum */
+    .album {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 10px;
+      width: 150px;
+      background-color: #fff;
+      box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    /* Estilos para a imagem do álbum */
+    .album img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+
+    /* Estilos para o botão de visualização de faixas do álbum */
+    .album button {
+      margin-top: auto;
+      padding: 10px;
+      border: none;
+      background-color: #007bff;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    /* Estilos para o contêiner de lista de faixas */
+    #trackList {
+      margin-top: 50px;
+      max-width: 600px;
+      padding: 0;
+      list-style: none;
+    }
+
+    /* Estilos para cada faixa */
+    #trackList li {
+      margin-bottom: 10px;
+    }
+
+    /* Estilos para os links das faixas */
+    #trackList li a {
+      display: block;
+      padding: 10px;
+      background-color: #fff;
+      color: #333;
+      text-decoration: none;
+      border-radius: 5px;
+      box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+      transition: background-color 0.3s ease;
+    }
+
+    /* Estilos para os links das faixas ao passar o mouse */
+    #trackList li a:hover {
+      background-color: #007bff;
+      color: #fff;
+    }
+
+    /* Estilos para o container de vídeo */
+    #mediaContainer {
+      display: flex;
+      justify-content: center;
+    }
+
+    #videoContainer {
+      margin-left: 50px;
+    }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+  <div id="searchContainer">
+    <input type="text" id="searchTerm" placeholder="Search for an album">
+    <button id="searchButton">Search</button>
+  </div>
+
+  <div id="albumList"></div>
+
+  <div id="mediaContainer">
+    <ul id="trackList"></ul>
+    <div id="videoContainer"></div>
+  </div>
+
+  <script>
+    const lastFmApiKey = '6e7c0a29cd508f42a6737e5fd3d6110b';
+    const lastFmBaseUrl = 'https://ws.audioscrobbler.com/2.0/';
+    let currentTracks = []; // Armazena as faixas atuais
+    let player; // Armazena a referência ao player do YouTube
+    let currentTrackIndex = 0; // Índice da faixa atual
+
+    document.getElementById('searchButton').addEventListener('click', () => {
+      const searchTerm = document.getElementById('searchTerm').value;
+      searchAlbums(searchTerm)
+        .then(albums => showAlbums(albums))
+        .catch(error => console.error(error));
+    });
+
+    async function searchAlbums(searchTerm) {
+      const url = `${lastFmBaseUrl}?method=album.search&album=${searchTerm}&api_key=${lastFmApiKey}&limit=7&format=json`;
+      const response = await fetch(url);
+      const data = await response.json();
+      return data.results.albummatches.album;
+    }
+
+    function showAlbums(albums) {
+      const albumList = document.getElementById('albumList');
+      albumList.innerHTML = '';
+      let currentArtist = '';
+      let albumCount = 0;
+
+      albums.forEach(album => {
+        if (album.artist !== currentArtist) {
+          currentArtist = album.artist;
+          albumCount = 0;
+          const albumRow = document.createElement('div');
+          albumRow.classList.add('album-row');
+          albumList.appendChild(albumRow);
+        }
+        if (albumCount < 7) {
+          const albumElement = document.createElement('div');
+          albumElement.classList.add('album');
+          albumElement.innerHTML = 
+            `<img src="${album.image[2]['#text']}">
+             <button onclick="getTracks('${album.artist}', '${album.name}')">View Tracks</button>`;
+          albumList.lastChild.appendChild(albumElement);
+          albumCount++;
+        }
+      });
+    }
+
+    async function getTracks(artist, album) {
+      event.preventDefault();
+      const url = `${lastFmBaseUrl}?method=album.getinfo&artist=${artist}&album=${album}&api_key=${lastFmApiKey}&format=json`;
+      const response = await fetch(url);
+      const data = await response.json();
+      const tracks = data.album.tracks.track;
+      showTracks(tracks);
+    }
+
+    function showTracks(tracks) {
+      const trackList = document.getElementById('trackList');
+      trackList.innerHTML = '';
+      currentTracks = tracks; // Atualiza as faixas atuais
+      currentTrackIndex = 0; // Reinicia o índice da faixa atual
+
+      tracks.forEach(track => {
+        const trackElement = document.createElement('li');
+        trackElement.innerHTML = 
+          `<a href="#" onclick="searchVideo('${track.name}')">${track.name}</a>`;
+        trackList.appendChild(trackElement);
+      });
+
+      // Adiciona o botão "Tocar Todas"
+      const playAllButton = document.createElement('button');
+      playAllButton.innerText = 'Play All';
+      playAllButton.onclick = playAllTracks; // Chama a função para tocar todas as músicas
+      trackList.appendChild(playAllButton);
+    }
+
+    function searchVideo(trackName) {
+      const videoContainer = document.getElementById('videoContainer');
+      videoContainer.innerHTML = '';
+      const youtubeApiKey = 'AIzaSyBHN15CrGzqMIIBk9m-kxQ2mpxR78toFXI';
+      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${trackName}&type=video&key=${youtubeApiKey}`;
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          if (data.items.length > 0) {
+            const videoId = data.items[0].id.videoId;
+            videoContainer.innerHTML = ''; // Limpa o contêiner de vídeo
+
+            // Verifica se o player já existe
+            if (!player) {
+              player = new YT.Player('videoContainer', {
+                height: '315',
+                width: '560',
+                videoId: videoId,
+                events: {
+                  'onReady': function(event) {
+                    event.target.playVideo();
+                  },
+                  'onStateChange': function(event) {
+                    if (event.data === YT.PlayerState.ENDED) {
+                      playNextTrack(); // Chama a função para tocar a próxima faixa
+                    }
+                  }
+                }
+              });
+            } else {
+              player.loadVideoById(videoId); // Carrega o novo vídeo
+            }
+          } else {
+            console.log('Nenhum vídeo encontrado.');
+          }
+        })
+        .catch(error => console.error(error));
+    }
+
+    function playAllTracks() {
+      if (currentTracks.length > 0) {
+        const trackName = currentTracks[currentTrackIndex].name;
+        searchVideo(trackName); // Toca a primeira faixa
+      }
+    }
+
+    function playNextTrack() {
+      currentTrackIndex++;
+      if (currentTrackIndex < currentTracks.length) {
+        const nextTrackName = currentTracks[currentTrackIndex].name;
+        searchVideo(nextTrackName); // Toca a próxima faixa
+      }
+    }
+  </script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>
